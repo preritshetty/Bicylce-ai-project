@@ -1,0 +1,126 @@
+{
+  "execution_summary": {
+    "total_rows": 10016,
+    "flagged_rows": 8727,
+    "clean_rows": 1289,
+    "flagged_percentage": 87.13,
+    "total_detections": 14041,
+    "execution_time_seconds": 0.04,
+    "successful_codes": 3,
+    "failed_codes": 0,
+    "success_rate": 100.0,
+    "timestamp": "2025-08-28T01:43:10.574605"
+  },
+  "individual_results": [
+    {
+      "flag_value": 1,
+      "success": true,
+      "rows_detected": 2425,
+      "explanation": "This code detects contradictory values in the same row where both Window Seat and Aisle Seat are marked as True. It flags rows where this inconsistency occurs.",
+      "code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "error": null
+    },
+    {
+      "flag_value": 2,
+      "success": true,
+      "rows_detected": 4913,
+      "explanation": "This code detects rows where the departure datetime is after the arrival datetime, which violates the business logic. It ensures that the departure datetime is before the arrival datetime.",
+      "code": "df.loc[(pd.to_datetime(df['Departure Datetime'], errors='coerce') > pd.to_datetime(df['Arrival Datetime'], errors='coerce')) & df['Departure Datetime'].notna() & df['Arrival Datetime'].notna(), 'flag_status'] |= 2",
+      "error": null
+    },
+    {
+      "flag_value": 4,
+      "success": true,
+      "rows_detected": 6703,
+      "explanation": "Checks for mismatch between Layovers and Layover Locations",
+      "code": "df.loc[(pd.to_numeric(df['Layovers'], errors='coerce').fillna(0).astype(int) != df['Layover Locations'].fillna('').astype(str).apply(lambda x: len([i for i in re.split(r'[;,|>]|->', str(x)) if i.strip()]))), 'flag_status'] |= 4",
+      "error": null
+    }
+  ],
+  "flag_breakdown": {
+    "individual_flags": {
+      "1": 2425,
+      "2": 4913,
+      "4": 6703
+    },
+    "combined_flags": {
+      "1": 382,
+      "6": 2513,
+      "5": 858,
+      "4": 2574,
+      "7": 758,
+      "2": 1215,
+      "3": 427
+    },
+    "flag_combinations": [
+      {
+        "flag_status": 1,
+        "individual_flags": [
+          1
+        ],
+        "flag_description": "Flags 1",
+        "row_count": 382,
+        "binary_representation": "1"
+      },
+      {
+        "flag_status": 6,
+        "individual_flags": [
+          2,
+          4
+        ],
+        "flag_description": "Flags 2+4",
+        "row_count": 2513,
+        "binary_representation": "110"
+      },
+      {
+        "flag_status": 5,
+        "individual_flags": [
+          1,
+          4
+        ],
+        "flag_description": "Flags 1+4",
+        "row_count": 858,
+        "binary_representation": "101"
+      },
+      {
+        "flag_status": 4,
+        "individual_flags": [
+          4
+        ],
+        "flag_description": "Flags 4",
+        "row_count": 2574,
+        "binary_representation": "100"
+      },
+      {
+        "flag_status": 7,
+        "individual_flags": [
+          1,
+          2,
+          4
+        ],
+        "flag_description": "Flags 1+2+4",
+        "row_count": 758,
+        "binary_representation": "111"
+      },
+      {
+        "flag_status": 2,
+        "individual_flags": [
+          2
+        ],
+        "flag_description": "Flags 2",
+        "row_count": 1215,
+        "binary_representation": "10"
+      },
+      {
+        "flag_status": 3,
+        "individual_flags": [
+          1,
+          2
+        ],
+        "flag_description": "Flags 1+2",
+        "row_count": 427,
+        "binary_representation": "11"
+      }
+    ]
+  }
+}

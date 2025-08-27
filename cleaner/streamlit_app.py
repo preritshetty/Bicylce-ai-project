@@ -1,3 +1,6 @@
+import sys, os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # add project root
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -10,6 +13,15 @@ import traceback
 import tempfile
 import zipfile
 from pathlib import Path
+_current = Path(__file__).resolve()
+_repo_root = _current.parents[1]          # project root
+_analyzer_dir = _repo_root / "analyzer"
+_modules_dir = _analyzer_dir / "modules"
+
+for p in (str(_repo_root), str(_analyzer_dir), str(_modules_dir)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+from analyzer.app import render_analysis   # re-use the full analysis UI
 
 # Load environment variables from .env file
 try:
@@ -140,13 +152,16 @@ except ImportError as e:
 if not MODULES_LOADED:
     st.stop()
 
-# Page configuration
+# --------------------- PAGE CONFIG & STYLES ---------------------
 st.set_page_config(
     page_title="Data Quality Pipeline",
     page_icon="🔍",
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Constant path where final cleaned CSV is saved (Phase 3)
+FINAL_OUT_PATH = "data/final_cleaned.csv"
 
 # Custom CSS for better styling
 st.markdown("""
@@ -179,6 +194,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --------------------- HELPERS & PIPELINE FUNCS ---------------------
 def initialize_session_state():
     """Initialize session state variables"""
     if 'current_phase' not in st.session_state:
@@ -201,6 +217,23 @@ def initialize_session_state():
         st.session_state.phase1_reports = {}
     if 'processing_complete' not in st.session_state:
         st.session_state.processing_complete = False
+    # NEW: in-memory cleaned df for Analyze tab
+    if 'cleaned_df' not in st.session_state:
+        st.session_state.cleaned_df = None
+FINAL_OUT_PATH = "data/final_cleaned.csv"  # keep this single source of truth
+
+def get_final_clean_df() -> pd.DataFrame | None:
+    """Return the final cleaned dataset, preferring in-memory, else on-disk."""
+    df = st.session_state.get("cleaned_df")
+    if df is not None and not df.empty:
+        return df
+    if os.path.exists(FINAL_OUT_PATH):
+        try:
+            df = pd.read_csv(FINAL_OUT_PATH)
+            return df if not df.empty else None
+        except Exception:
+            return None
+    return None
 
 # New functions for multi-file handling and joining
 def load_file_data(uploaded_file):
@@ -909,10 +942,8 @@ def display_phase2_results():
         for issue in results['issues']:
             severity = issue['severity'].strip().lower()
             severity_counts[severity] = severity_counts.get(severity, 0) + 1
-
         high_severity = severity_counts.get('high', 0)
         st.metric("High Severity", high_severity)
-
     
     with col4:
         categories = set(issue['category'] for issue in results['issues'])
@@ -1132,6 +1163,7 @@ def phase3_processing():
                     'flag_mapping_file': flag_mapping_file,
                     'codes_file': codes_file,
                     'execution_results': execution_results,
+                    'output_files': execution_results.get('output_files', {}),
                     'flagged_data_file': execution_results['output_files']['flagged_data'],
                     'execution_report_file': execution_results['output_files']['execution_report'],
                     'renamed_data_file': temp_data_file,
@@ -1140,9 +1172,12 @@ def phase3_processing():
                 Path("data").mkdir(exist_ok=True)
 
                 # Save final cleaned dataset (flagged_data is the Phase 3 output)
-                final_out = Path("data/final_cleaned.csv")
+                final_out = Path(FINAL_OUT_PATH)
                 flagged_data = pd.read_csv(st.session_state.phase3_results['flagged_data_file'])
                 flagged_data.to_csv(final_out, index=False)
+
+                # >>> IMPORTANT: make the cleaned frame available to the Analyze tab immediately
+                st.session_state["cleaned_df"] = flagged_data.copy()
 
                 # Save flag mapping (if available)
                 try:
@@ -1353,8 +1388,10 @@ def create_results_package_with_renaming():
                 
                 # Add Phase 2 results
                 if st.session_state.phase2_results:
-                    zipf.writestr("phase2_analysis.json", 
-                                json.dumps(st.session_state.phase2_results, indent=2))
+                    zipf.writestr(
+                        "phase2_analysis.json",
+                        json.dumps(st.session_state.phase2_results, indent=2)
+                    )
                 
                 # Add Phase 3 renamed data (if available)
                 if hasattr(st.session_state, 'phase3_renamed_data'):
@@ -1364,29 +1401,34 @@ def create_results_package_with_renaming():
                 
                 # Add Phase 3 results
                 if st.session_state.phase3_results:
-                    # Flagged data
                     if os.path.exists(st.session_state.phase3_results['flagged_data_file']):
-                        zipf.write(st.session_state.phase3_results['flagged_data_file'], 
-                                 "phase3_flagged_data.csv")
+                        zipf.write(
+                            st.session_state.phase3_results['flagged_data_file'],
+                            "phase3_flagged_data.csv"
+                        )
                     
-                    # Reports
                     if os.path.exists(st.session_state.phase3_results['execution_report_file']):
-                        zipf.write(st.session_state.phase3_results['execution_report_file'], 
-                                 "phase3_execution_report.json")
+                        zipf.write(
+                            st.session_state.phase3_results['execution_report_file'],
+                            "phase3_execution_report.json"
+                        )
                     
                     if os.path.exists(st.session_state.phase3_results['flag_mapping_file']):
-                        zipf.write(st.session_state.phase3_results['flag_mapping_file'], 
-                                 "phase3_flag_mapping.json")
+                        zipf.write(
+                            st.session_state.phase3_results['flag_mapping_file'],
+                            "phase3_flag_mapping.json"
+                        )
                     
-                    # Column renaming report
                     if st.session_state.phase3_results.get('applied_renamings'):
                         renaming_report = {
                             'applied_renamings': st.session_state.phase3_results['applied_renamings'],
                             'timestamp': datetime.now().isoformat(),
                             'total_columns_renamed': len(st.session_state.phase3_results['applied_renamings'])
                         }
-                        zipf.writestr("column_renaming_report.json", 
-                                    json.dumps(renaming_report, indent=2))
+                        zipf.writestr(
+                            "column_renaming_report.json",
+                            json.dumps(renaming_report, indent=2)
+                        )
             
             # Read the zip file for download
             with open(tmp_file.name, 'rb') as f:
@@ -1398,9 +1440,8 @@ def create_results_package_with_renaming():
                 file_name=f"data_quality_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip",
                 mime="application/zip"
             )
-            
-        os.unlink(tmp_file.name)
         
+        os.unlink(tmp_file.name)
     except Exception as e:
         st.error(f"Error creating results package: {str(e)}")
 
@@ -1408,10 +1449,9 @@ def enhanced_data_comparison_tab():
     """Enhanced data comparison tab that includes renamed data"""
     # Data comparison between phases
     st.subheader("Data Transformation Summary")
-    
-    # Create comparison metrics
+
     comparison_data = []
-    
+
     if st.session_state.original_data is not None:
         original = st.session_state.original_data
         comparison_data.append({
@@ -1419,9 +1459,9 @@ def enhanced_data_comparison_tab():
             "Rows": len(original),
             "Columns": len(original.columns),
             "Missing Values": original.isnull().sum().sum(),
-            "Memory (MB)": f"{original.memory_usage(deep=True).sum() / (1024 * 1024):.2f}"
+            "Memory (MB)": f"{original.memory_usage(deep=True).sum() / (1024*1024):.2f}"
         })
-    
+
     if st.session_state.phase1_data is not None:
         phase1 = st.session_state.phase1_data
         comparison_data.append({
@@ -1429,10 +1469,9 @@ def enhanced_data_comparison_tab():
             "Rows": len(phase1),
             "Columns": len(phase1.columns),
             "Missing Values": phase1.isnull().sum().sum(),
-            "Memory (MB)": f"{phase1.memory_usage(deep=True).sum() / (1024 * 1024):.2f}"
+            "Memory (MB)": f"{phase1.memory_usage(deep=True).sum() / (1024*1024):.2f}"
         })
-    
-    # Add renamed data comparison if available
+
     if hasattr(st.session_state, 'phase3_renamed_data'):
         renamed_data = st.session_state.phase3_renamed_data
         comparison_data.append({
@@ -1440,11 +1479,10 @@ def enhanced_data_comparison_tab():
             "Rows": len(renamed_data),
             "Columns": len(renamed_data.columns),
             "Missing Values": renamed_data.isnull().sum().sum(),
-            "Memory (MB)": f"{renamed_data.memory_usage(deep=True).sum() / (1024 * 1024):.2f}"
+            "Memory (MB)": f"{renamed_data.memory_usage(deep=True).sum() / (1024*1024):.2f}"
         })
-    
+
     if st.session_state.phase3_results:
-        # Load flagged data for comparison
         try:
             flagged_data = pd.read_csv(st.session_state.phase3_results['flagged_data_file'])
             flagged_rows = (flagged_data['flag_status'] > 0).sum()
@@ -1453,158 +1491,64 @@ def enhanced_data_comparison_tab():
                 "Rows": len(flagged_data),
                 "Columns": len(flagged_data.columns),
                 "Missing Values": flagged_data.drop('flag_status', axis=1).isnull().sum().sum(),
-                "Memory (MB)": f"{flagged_data.memory_usage(deep=True).sum() / (1024 * 1024):.2f}",
+                "Memory (MB)": f"{flagged_data.memory_usage(deep=True).sum() / (1024*1024):.2f}",
                 "Flagged Rows": flagged_rows
             })
-        except:
+        except Exception:
             pass
-    
+
     if comparison_data:
-        comparison_df = pd.DataFrame(comparison_data)
-        st.dataframe(comparison_df, use_container_width=True)
-    
+        st.dataframe(pd.DataFrame(comparison_data), use_container_width=True)
+
     # Show sample data comparisons
-    comparison_cols = st.columns(3)
-    
-    with comparison_cols[0]:
+    cols = st.columns(3)
+    with cols[0]:
         st.write("**Original Data Sample**")
         if st.session_state.original_data is not None:
             st.dataframe(st.session_state.original_data.head(), use_container_width=True)
-    
-    with comparison_cols[1]:
+    with cols[1]:
         st.write("**Phase 1 Cleaned Data Sample**")
         if st.session_state.phase1_data is not None:
             st.dataframe(st.session_state.phase1_data.head(), use_container_width=True)
-    
-    with comparison_cols[2]:
+    with cols[2]:
         st.write("**Phase 3 Renamed Data Sample**")
         if hasattr(st.session_state, 'phase3_renamed_data'):
             st.dataframe(st.session_state.phase3_renamed_data.head(), use_container_width=True)
         else:
             st.info("No column renaming applied")
-    
-    # Column name comparison
-    if hasattr(st.session_state, 'phase3_renamed_data') and st.session_state.phase3_results.get('applied_renamings'):
-        st.subheader("Column Name Changes")
-        
-        applied_renamings = st.session_state.phase3_results['applied_renamings']
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.write("**Original Column Names**")
-            original_cols = list(st.session_state.phase1_data.columns) if st.session_state.phase1_data is not None else []
-            for i, col in enumerate(original_cols[:10], 1):  # Show first 10
-                style = "color: red;" if col in applied_renamings else ""
-                st.markdown(f"{i}. <span style='{style}'>{col}</span>", unsafe_allow_html=True)
-            
-            if len(original_cols) > 10:
-                st.write(f"... and {len(original_cols) - 10} more columns")
-        
-        with col2:
-            st.write("**New Column Names**")
-            renamed_cols = list(st.session_state.phase3_renamed_data.columns) if hasattr(st.session_state, 'phase3_renamed_data') else []
-            for i, col in enumerate(renamed_cols[:10], 1):  # Show first 10
-                was_renamed = col in applied_renamings.values()
-                style = "color: green; font-weight: bold;" if was_renamed else ""
-                st.markdown(f"{i}. <span style='{style}'>{col}</span>", unsafe_allow_html=True)
-            
-            if len(renamed_cols) > 10:
-                st.write(f"... and {len(renamed_cols) - 10} more columns")
-    
-    # Show flagged rows if available
-    if st.session_state.phase3_results:
-        try:
-            flagged_data = pd.read_csv(st.session_state.phase3_results['flagged_data_file'])
-            flagged_rows = flagged_data[flagged_data['flag_status'] > 0]
-            
-            if len(flagged_rows) > 0:
-                st.subheader("Quality Issues Detected (Sample)")
-                # Show flag status and a few sample columns
-                display_cols = ['flag_status'] + list(flagged_rows.columns[:5])
-                if 'flag_status' in flagged_rows.columns:
-                    display_cols = ['flag_status'] + [col for col in flagged_rows.columns[:5] if col != 'flag_status']
-                
-                st.dataframe(flagged_rows[display_cols].head(10), use_container_width=True)
-                
-                # Decode flags for better understanding
-                st.write("**Flag Status Explanation**")
-                unique_flags = flagged_rows['flag_status'].unique()
-                
-                flag_explanations = []
-                for flag_status in sorted(unique_flags):
-                    if flag_status > 0:
-                        # Decode binary flag
-                        individual_flags = []
-                        temp_status = flag_status
-                        power = 1
-                        while temp_status > 0:
-                            if temp_status & 1:
-                                individual_flags.append(power)
-                            temp_status >>= 1
-                            power <<= 1
-                        
-                        count = (flagged_rows['flag_status'] == flag_status).sum()
-                        flag_explanations.append({
-                            'Flag Status': flag_status,
-                            'Individual Flags': '+'.join(map(str, individual_flags)),
-                            'Row Count': count,
-                            'Binary': bin(flag_status)[2:]
-                        })
-                
-                if flag_explanations:
-                    st.dataframe(pd.DataFrame(flag_explanations), use_container_width=True)
-            else:
-                st.success("No data quality issues detected in the dataset!")
-        except Exception as e:
-            st.error(f"Error loading flagged data: {str(e)}")
-
-def main():
-    """Main Streamlit application with multi-file support"""
-    st.title("� Data Quality Pipeline")
-    st.markdown("**Transform your data through AI-powered quality detection and cleaning**")
-    
-    # Initialize session state
-    initialize_session_state()
-    
-    # Sidebar with progress
+def render_cleaner_tab():
+    """Render the original cleaner state-machine UI inside the Clean & Export tab."""
+    # Sidebar progress
     st.sidebar.title("Pipeline Progress")
-    
-    # Updated phases to include join phase
     phases = ["Upload & Join Data", "Phase 1: Cleaning", "Phase 2: AI Analysis", "Phase 3: Code Generation", "Results"]
-    
     for i, phase in enumerate(phases):
         if i <= st.session_state.current_phase:
             st.sidebar.success(f"✅ {phase}")
         elif i == st.session_state.current_phase + 1:
-            st.sidebar.info(f"� {phase}")
+            st.sidebar.info(f"➡️ {phase}")
         else:
             st.sidebar.write(f"⏳ {phase}")
-    
-    # Show file management in sidebar
+
+    # Sidebar: uploaded files + join config summary
     if st.session_state.uploaded_files:
         st.sidebar.markdown("---")
         st.sidebar.write("**Uploaded Files:**")
         for filename in st.session_state.uploaded_files.keys():
-            st.sidebar.write(f"� {filename}")
-        
+            st.sidebar.write(f"📄 {filename}")
         if len(st.session_state.uploaded_files) > 1 and st.session_state.join_config:
             st.sidebar.write("**Join Configuration:**")
             st.sidebar.write(f"Primary: {st.session_state.join_config['primary_table']}")
             for join in st.session_state.join_config['joins']:
                 st.sidebar.write(f"+ {join['secondary_table']} ({join['join_type']})")
-    
-    # Main content based on current phase
+
+    # Main content by phase (this mirrors your old main())
     if st.session_state.current_phase == 0:
-        # Multi-file upload and join configuration
         multi_file_upload_section()
-    
+
     elif st.session_state.current_phase == 1:
-        # Phase 1: Cleaning
         modified_phase1_processing()
-    
+
     elif st.session_state.current_phase == 2:
-        # Phase 2: AI Analysis
         if st.session_state.phase1_data is not None:
             phase2_processing(st.session_state.phase1_data)
         else:
@@ -1613,51 +1557,77 @@ def main():
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
                 st.rerun()
-    
+
     elif st.session_state.current_phase == 3:
-        # Phase 2 completed, show results and Phase 3
         display_phase2_results()
-        
         st.markdown("---")
         phase3_processing()
-    
+
     elif st.session_state.current_phase >= 4:
-        # All phases completed, show final results
         tab1, tab2, tab3, tab4 = st.tabs(["Phase 2 Results", "Phase 3 Results", "Data Comparison", "Downloads"])
-        
         with tab1:
             display_phase2_results()
-        
         with tab2:
             display_phase3_results()
-        
         with tab3:
             enhanced_data_comparison_tab()
-        
         with tab4:
             create_final_downloads()
-    
-    # Restart option
+
+    # Sidebar: restart button
     st.sidebar.markdown("---")
     if st.sidebar.button("Start New Analysis"):
-        # Clear all session state
         for key in list(st.session_state.keys()):
             del st.session_state[key]
+        try:
+            if os.path.exists(FINAL_OUT_PATH):
+                os.remove(FINAL_OUT_PATH)
+            flag_map_path = "data/flag_mapping.json"
+            if os.path.exists(flag_map_path):
+                os.remove(flag_map_path)
+        except Exception as e:
+            st.warning(f"Could not remove old final dataset: {e}")
+
         st.rerun()
-    
+
     # Footer
     st.markdown("---")
     st.markdown("""
     **Data Quality Pipeline** - Powered by AI
-    
+
     This application processes your data through multiple phases:
     - **Upload & Join**: Upload multiple files and configure table joins
     - **Phase 1**: Traditional cleaning (duplicates, missing values, text standardization)  
     - **Phase 2**: AI-powered issue detection and business logic analysis
     - **Phase 3**: Automated code generation and execution for quality flagging
-    
+
     All processing is done locally with your OpenAI API key for analysis.
     """)
+
+def main():
+    st.title("🔍 Data Quality Pipeline")
+    st.markdown("**Transform your data through AI-powered quality detection and cleaning**")
+    initialize_session_state()
+
+    # Check availability of a final cleaned dataset
+    final_df_available = get_final_clean_df() is not None
+    analyze_label = "📊 Analyze" if final_df_available else "📊 Analyze (locked)"
+
+    tab_clean, tab_analyze = st.tabs(["🧹 Clean & Export", analyze_label])
+
+    with tab_clean:
+        # render your full cleaner UI (state machine)
+        render_cleaner_tab()
+
+    with tab_analyze:
+        df_for_analysis = get_final_clean_df()   # ONLY from memory/disk final_cleaned.csv
+        if df_for_analysis is None:
+            st.info("🔒 Analyzer unlocks after cleaning is complete.")
+            st.stop()
+
+        # ✅ pass concrete dataframe into analyzer
+        render_analysis(df_for_analysis)
+
 
 if __name__ == "__main__":
     main()

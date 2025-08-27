@@ -1,0 +1,35 @@
+{
+  "total_codes": 4,
+  "detection_codes": [
+    {
+      "flag_value": 1,
+      "detection_code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "explanation": "This code detects rows where both Window Seat and Aisle Seat are marked as true, indicating a contradictory situation. It flags these rows for further investigation.",
+      "test_description": "To test this detection, create a sample dataset with contradictory values in Window Seat and Aisle Seat columns. Apply the detection code and verify that rows with contradictory values are flagged.",
+      "safety_notes": "Ensure that the normalization of boolean values covers all possible variations to accurately detect contradictory values. Verify the results with manual checks to confirm the accuracy of the detection."
+    },
+    {
+      "flag_value": 2,
+      "detection_code": "df.loc[(pd.to_datetime(df['Departure Date/Time'], errors='coerce') > pd.to_datetime(df['Arrival Date/Time'], errors='coerce')) & df['Departure Date/Time'].notna() & df['Arrival Date/Time'].notna(), 'flag_status'] |= 2",
+      "explanation": "This code detects rows where the Departure Date/Time is after the Arrival Date/Time, indicating a business logic violation. It converts the date/time columns to datetime objects and checks for the violation.",
+      "test_description": "Test by inserting a row where Departure Date/Time is after Arrival Date/Time and running the detection code. The flag_status should be set to 2 for that row.",
+      "safety_notes": "Ensure that the date/time columns are properly formatted and contain valid date/time values for accurate detection."
+    },
+    {
+      "flag_value": 4,
+      "detection_code": "df.loc[(pd.to_numeric(df['Loyalty Points'], errors='coerce').fillna(0) < 0) & df['Loyalty Points'].notna(), 'flag_status'] |= 4",
+      "explanation": "This code detects negative loyalty points in the 'Loyalty Points' column by converting the column to numeric, checking for negative values, and flagging rows where negative loyalty points are found.",
+      "test_description": "To test this detection, you can create a sample dataset with negative loyalty points in the 'Loyalty Points' column and apply the detection code to see if it correctly flags those rows.",
+      "safety_notes": "Ensure that the 'Loyalty Points' column contains only numeric values representing loyalty points. Verify the correctness of the detection results by reviewing flagged rows for negative loyalty points."
+    },
+    {
+      "flag_value": 8,
+      "detection_code": "df.loc[(pd.to_numeric(df['Layovers'], errors='coerce').fillna(0).astype(int) != df['Layover Locations'].fillna('').astype(str).apply(lambda x: len([i for i in re.split(r'[;,|>]|->', str(x)) if i.strip()]))), 'flag_status'] |= 8",
+      "explanation": "Checks for mismatch between Layovers and Layover Locations",
+      "test_description": "Create rows where Layovers does not equal number of items in Layover Locations",
+      "safety_notes": "Handles missing values, multiple delimiters (;,|,>,->)."
+    }
+  ],
+  "generation_timestamp": "2025-08-28T01:22:56.627307",
+  "llm_model": "gpt-3.5-turbo"
+}

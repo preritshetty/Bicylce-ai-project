@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "created_at": "2025-08-28T01:43:02.953649",
+    "created_at": "2025-08-28T00:51:53.972729",
     "total_flags": 3,
     "max_flag_value": 4,
     "description": "Binary flag mapping for Phase 2 data quality issues"
@@ -8,7 +8,7 @@
   "flag_mapping": {
     "1": "Contradictory values in the same row: Window Seat=True AND Aisle Seat=True",
     "2": "Departure datetime after arrival datetime",
-    "4": "Mismatch between Layovers count and layover locations list"
+    "4": "Mismatch between Layovers count and layover locations"
   },
   "issue_details": {
     "1": {
@@ -19,27 +19,27 @@
         "Window Seat",
         "Aisle Seat"
       ],
-      "fix_approach": "Ensure only one of Window Seat or Aisle Seat is True in each row."
+      "fix_approach": "Ensure only one of Window Seat or Aisle Seat is set to True"
     },
     "2": {
       "description": "Departure datetime after arrival datetime",
-      "category": "Business Logic Violation",
+      "category": "Business Logic Violations",
       "severity": "Medium",
       "affected_columns": [
         "Departure Datetime",
         "Arrival Datetime"
       ],
-      "fix_approach": "Ensure departure datetime is before arrival datetime."
+      "fix_approach": "Correct the departure and arrival datetimes"
     },
     "4": {
-      "description": "Mismatch between Layovers count and layover locations list",
+      "description": "Mismatch between Layovers count and layover locations",
       "category": "Cross-Field Relationship Validation",
       "severity": "High",
       "affected_columns": [
         "Layovers",
         "Layover Locations"
       ],
-      "fix_approach": "Ensure the number of Layovers matches the number of layover locations."
+      "fix_approach": "Ensure the number of Layovers matches the number of layover locations"
     }
   }
 }
