@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+plotly
+python-dotenv
+langchain
+langchain-openai
+langchain-experimental
+langchain-community
+json5
+tabulate
+

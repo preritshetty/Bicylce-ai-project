@@ -1,0 +1,56 @@
+{
+  "metadata": {
+    "created_at": "2025-08-27T23:50:34.197278",
+    "total_flags": 4,
+    "max_flag_value": 8,
+    "description": "Binary flag mapping for Phase 2 data quality issues"
+  },
+  "flag_mapping": {
+    "1": "Contradictory values found in Window_Seat and Aisle_Seat columns.",
+    "2": "Status vs operational data conflict detected.",
+    "4": "Departure date after arrival date.",
+    "8": "Negative or impossible numeric values found."
+  },
+  "issue_details": {
+    "1": {
+      "description": "Contradictory values found in Window_Seat and Aisle_Seat columns.",
+      "category": "Data Consistency",
+      "severity": "High",
+      "affected_columns": [
+        "Window_Seat",
+        "Aisle_Seat"
+      ],
+      "fix_approach": "Ensure only one of Window_Seat or Aisle_Seat is True per row."
+    },
+    "2": {
+      "description": "Status vs operational data conflict detected.",
+      "category": "Data Consistency",
+      "severity": "Medium",
+      "affected_columns": [
+        "Status",
+        "Departure_DateTime",
+        "Arrival_DateTime"
+      ],
+      "fix_approach": "Review and resolve discrepancies between Status and departure/arrival dates."
+    },
+    "4": {
+      "description": "Departure date after arrival date.",
+      "category": "Business Logic Violation",
+      "severity": "High",
+      "affected_columns": [
+        "Departure_DateTime",
+        "Arrival_DateTime"
+      ],
+      "fix_approach": "Ensure departure date is before arrival date."
+    },
+    "8": {
+      "description": "Negative or impossible numeric values found.",
+      "category": "Business Logic Violation",
+      "severity": "Medium",
+      "affected_columns": [
+        "Duration_Hours"
+      ],
+      "fix_approach": "InvestiGate and correct negative or unrealistic duration values."
+    }
+  }
+}
