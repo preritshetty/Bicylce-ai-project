@@ -5,9 +5,6 @@ import numpy as np
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 import plotly.express as px   # ✅ added
-
-# Local modules
-from modules.data_loader import load_bookings
 from modules.llm_agent import create_agent
 from modules.query_handler import run_query, pick_axes, pick_chart_type
 
@@ -37,21 +34,20 @@ def render_analysis(df: pd.DataFrame | None):
     Reuse the full analysis UI. If df is None, fall back to the original
     upload/default-loading logic from this file (so app.py still runs standalone).
     """
-    provided_df = df is not None
+    # Always load the cleaner’s output
+    DATA_PATH = "data/final_cleaned.csv"
+    st.sidebar.header("📂 Data Source (Cleaner Output)")
+    st.sidebar.info("This analyser always reads the cleaner’s final output.")
 
-    # Only use upload/default flow when nothing was provided
-    if not provided_df:
-        st.sidebar.header("📂 Data Source")
-        uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type="csv")
-        if uploaded_file:
-            df = pd.read_csv(uploaded_file)
-            st.sidebar.success(f"✅ Loaded uploaded dataset: {uploaded_file.name}")
-        else:
-            # your existing default loader (if any)
-            df = load_bookings()
+    if not os.path.exists(DATA_PATH):
+        st.error(f"❌ Expected cleaned file not found: {DATA_PATH}")
+        st.stop()
 
-    if df is None or df.empty:
-        st.error("❌ No dataset available.")
+    try:
+        df = pd.read_csv(DATA_PATH)
+        st.sidebar.success(f"✅ Loaded cleaned dataset: {DATA_PATH}")
+    except Exception as e:
+        st.error(f"❌ Failed to read {DATA_PATH}: {e}")
         st.stop()
 
     # ensure downstream code sees the same frame

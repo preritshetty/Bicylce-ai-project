@@ -77,3 +77,4 @@ For every question, return **two things**:
 - ✅ Proof must align with the natural language answer.
 - ✅ Time values (months, weekdays) must be expressed in words, not just numbers.
 - ✅ Proof tables must be rectangular (no missing cells).
+DONT Use flag status column for any outputs
