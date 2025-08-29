@@ -1,0 +1,103 @@
+{
+  "execution_summary": {
+    "total_rows": 10016,
+    "flagged_rows": 6154,
+    "clean_rows": 3862,
+    "flagged_percentage": 61.44,
+    "total_detections": 12252,
+    "execution_time_seconds": 0.05,
+    "successful_codes": 4,
+    "failed_codes": 0,
+    "success_rate": 100.0,
+    "timestamp": "2025-08-29T08:48:00.199213"
+  },
+  "individual_results": [
+    {
+      "flag_value": 1,
+      "success": true,
+      "rows_detected": 2425,
+      "explanation": "This code detects rows where both Window Seat and Aisle Seat are marked as True, indicating a contradictory situation. It flags such rows for further investigation.",
+      "code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "error": null
+    },
+    {
+      "flag_value": 2,
+      "success": true,
+      "rows_detected": 4913,
+      "explanation": "This code detects conflicts between the 'Status' column and the 'Departure Date Time' and 'Arrival Date Time' columns. It flags rows where the 'Status' is not null and either the 'Departure Date Time' is after the 'Arrival Date Time', or the 'Departure Date Time' or 'Arrival Date Time' is in the future.",
+      "code": "df.loc[(df['Status'].notna()) & ((pd.to_datetime(df['Departure Date Time'], errors='coerce') > pd.to_datetime(df['Arrival Date Time'], errors='coerce')) | (pd.to_datetime(df['Departure Date Time'], errors='coerce') > pd.to_datetime('now')) | (pd.to_datetime(df['Arrival Date Time'], errors='coerce') > pd.to_datetime('now'))), 'flag_status'] |= 2",
+      "error": null
+    },
+    {
+      "flag_value": 4,
+      "success": true,
+      "rows_detected": 4913,
+      "explanation": "This code detects rows where the Departure Date Time is after the Arrival Date Time, which violates the business logic. It ensures that the departure date is before the arrival date.",
+      "code": "df.loc[(pd.to_datetime(df['Departure Date Time'], errors='coerce') > pd.to_datetime(df['Arrival Date Time'], errors='coerce')) & df['Departure Date Time'].notna() & df['Arrival Date Time'].notna(), 'flag_status'] |= 4",
+      "error": null
+    },
+    {
+      "flag_value": 8,
+      "success": true,
+      "rows_detected": 1,
+      "explanation": "This code detects negative or unrealistic duration values in the 'Duration Hours' column by converting the column to numeric and checking for values less than 0.",
+      "code": "df.loc[(pd.to_numeric(df['Duration Hours'], errors='coerce') < 0) & pd.to_numeric(df['Duration Hours'], errors='coerce').notna(), 'flag_status'] |= 8",
+      "error": null
+    }
+  ],
+  "flag_breakdown": {
+    "individual_flags": {
+      "1": 2425,
+      "2": 4913,
+      "4": 4913,
+      "8": 1
+    },
+    "combined_flags": {
+      "1": 1240,
+      "6": 3728,
+      "7": 1185,
+      "8": 1
+    },
+    "flag_combinations": [
+      {
+        "flag_status": 1,
+        "individual_flags": [
+          1
+        ],
+        "flag_description": "Flags 1",
+        "row_count": 1240,
+        "binary_representation": "1"
+      },
+      {
+        "flag_status": 6,
+        "individual_flags": [
+          2,
+          4
+        ],
+        "flag_description": "Flags 2+4",
+        "row_count": 3728,
+        "binary_representation": "110"
+      },
+      {
+        "flag_status": 7,
+        "individual_flags": [
+          1,
+          2,
+          4
+        ],
+        "flag_description": "Flags 1+2+4",
+        "row_count": 1185,
+        "binary_representation": "111"
+      },
+      {
+        "flag_status": 8,
+        "individual_flags": [
+          8
+        ],
+        "flag_description": "Flags 8",
+        "row_count": 1,
+        "binary_representation": "1000"
+      }
+    ]
+  }
+}
