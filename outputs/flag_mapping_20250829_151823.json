@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "created_at": "2025-08-29T15:18:23.070261",
+    "total_flags": 4,
+    "max_flag_value": 8,
+    "description": "Binary flag mapping for Phase 2 data quality issues"
+  },
+  "flag_mapping": {
+    "1": "Contradictory values in the same row: Window Seat=True AND Aisle Seat=True",
+    "2": "Status vs operational data conflict: Status='Cancelled' but Arrival Date/Time is present",
+    "4": "Departure date/time after arrival date/time",
+    "8": "Negative or impossible numeric values detected"
+  },
+  "issue_details": {
+    "1": {
+      "description": "Contradictory values in the same row: Window Seat=True AND Aisle Seat=True",
+      "category": "Data Consistency",
+      "severity": "High",
+      "affected_columns": [
+        "Window Seat",
+        "Aisle Seat"
+      ],
+      "fix_approach": "Ensure only one of Window Seat or Aisle Seat is set to True"
+    },
+    "2": {
+      "description": "Status vs operational data conflict: Status='Cancelled' but Arrival Date/Time is present",
+      "category": "Data Consistency",
+      "severity": "Medium",
+      "affected_columns": [
+        "Status",
+        "Arrival Date/Time"
+      ],
+      "fix_approach": "Review and correct the Status and arrival date inconsistency"
+    },
+    "4": {
+      "description": "Departure date/time after arrival date/time",
+      "category": "Business Logic Violation",
+      "severity": "High",
+      "affected_columns": [
+        "Departure Date/Time",
+        "Arrival Date/Time"
+      ],
+      "fix_approach": "Ensure departure date/time is before arrival date/time"
+    },
+    "8": {
+      "description": "Negative or impossible numeric values detected",
+      "category": "Business Logic Violation",
+      "severity": "Medium",
+      "affected_columns": [
+        "Duration (Hours)"
+      ],
+      "fix_approach": "Review and correct the Duration (Hours) values"
+    }
+  }
+}

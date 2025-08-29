@@ -1,0 +1,63 @@
+{
+  "execution_summary": {
+    "total_rows": 12791,
+    "flagged_rows": 12778,
+    "clean_rows": 13,
+    "flagged_percentage": 99.9,
+    "total_detections": 12791,
+    "execution_time_seconds": 0.01,
+    "successful_codes": 2,
+    "failed_codes": 0,
+    "success_rate": 100.0,
+    "timestamp": "2025-08-29T15:23:12.025184"
+  },
+  "individual_results": [
+    {
+      "flag_value": 1,
+      "success": true,
+      "rows_detected": 12778,
+      "explanation": "This code detects contradictory values in the 'Size' column by checking if there are inconsistent representations of 'Bedroom' and 'Bhk'. It standardizes the values by converting all 'Bedroom' to 'Bhk' and vice versa.",
+      "code": "df.loc[(df['Size'].str.lower().str.replace('bedroom', 'bhk') != df['Size'].str.lower().str.replace('bhk', 'bedroom')), 'flag_status'] |= 1",
+      "error": null
+    },
+    {
+      "flag_value": 2,
+      "success": true,
+      "rows_detected": 13,
+      "explanation": "Detects numeric outliers in the 'Price' column where the value is greater than 2000, which may indicate data entry errors.",
+      "code": "df.loc[(pd.to_numeric(df['Price'], errors='coerce') > 2000), 'flag_status'] |= 2",
+      "error": null
+    }
+  ],
+  "flag_breakdown": {
+    "individual_flags": {
+      "1": 12778,
+      "2": 13
+    },
+    "combined_flags": {
+      "1": 12765,
+      "3": 13
+    },
+    "flag_combinations": [
+      {
+        "flag_status": 1,
+        "individual_flags": [
+          1
+        ],
+        "flag_description": "Flags 1",
+        "row_count": 12765,
+        "binary_representation": "1"
+      },
+      {
+        "flag_status": 3,
+        "individual_flags": [
+          1,
+          2
+        ],
+        "flag_description": "Flags 1+2",
+        "row_count": 13,
+        "binary_representation": "11"
+      }
+    ]
+  }
+}

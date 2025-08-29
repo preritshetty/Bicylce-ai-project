@@ -1,0 +1,145 @@
+{
+  "execution_summary": {
+    "total_rows": 10016,
+    "flagged_rows": 7464,
+    "clean_rows": 2552,
+    "flagged_percentage": 74.52,
+    "total_detections": 10687,
+    "execution_time_seconds": 0.04,
+    "successful_codes": 4,
+    "failed_codes": 0,
+    "success_rate": 100.0,
+    "timestamp": "2025-08-29T15:18:33.026210"
+  },
+  "individual_results": [
+    {
+      "flag_value": 1,
+      "success": true,
+      "rows_detected": 2425,
+      "explanation": "Detects contradictory values in the same row for Window Seat and Aisle Seat being set to True simultaneously.",
+      "code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "error": null
+    },
+    {
+      "flag_value": 2,
+      "success": true,
+      "rows_detected": 3348,
+      "explanation": "This code detects rows where the 'Status' is 'Cancelled' but 'Arrival Date/Time' is not empty, indicating a conflict between the status and operational data.",
+      "code": "df.loc[(df['Status'].str.lower() == 'cancelled') & df['Arrival Date/Time'].notna(), 'flag_status'] |= 2",
+      "error": null
+    },
+    {
+      "flag_value": 4,
+      "success": true,
+      "rows_detected": 4913,
+      "explanation": "This code detects rows where the departure date/time is after the arrival date/time, which violates the business logic. It converts the 'Departure Date/Time' and 'Arrival Date/Time' columns to datetime objects and checks if the departure date/time is greater than the arrival date/time.",
+      "code": "df.loc[(pd.to_datetime(df['Departure Date/Time'], errors='coerce') > pd.to_datetime(df['Arrival Date/Time'], errors='coerce')) & df['Departure Date/Time'].notna() & df['Arrival Date/Time'].notna(), 'flag_status'] |= 4",
+      "error": null
+    },
+    {
+      "flag_value": 8,
+      "success": true,
+      "rows_detected": 1,
+      "explanation": "This code detects negative or impossible numeric values in the 'Duration (Hours)' column.",
+      "code": "df.loc[(pd.to_numeric(df['Duration (Hours)'], errors='coerce') < 0) & pd.to_numeric(df['Duration (Hours)'], errors='coerce').notna(), 'flag_status'] |= 8",
+      "error": null
+    }
+  ],
+  "flag_breakdown": {
+    "individual_flags": {
+      "1": 2425,
+      "2": 3348,
+      "4": 4913,
+      "8": 1
+    },
+    "combined_flags": {
+      "3": 406,
+      "4": 2485,
+      "5": 796,
+      "6": 1243,
+      "2": 1310,
+      "7": 389,
+      "1": 834,
+      "8": 1
+    },
+    "flag_combinations": [
+      {
+        "flag_status": 3,
+        "individual_flags": [
+          1,
+          2
+        ],
+        "flag_description": "Flags 1+2",
+        "row_count": 406,
+        "binary_representation": "11"
+      },
+      {
+        "flag_status": 4,
+        "individual_flags": [
+          4
+        ],
+        "flag_description": "Flags 4",
+        "row_count": 2485,
+        "binary_representation": "100"
+      },
+      {
+        "flag_status": 5,
+        "individual_flags": [
+          1,
+          4
+        ],
+        "flag_description": "Flags 1+4",
+        "row_count": 796,
+        "binary_representation": "101"
+      },
+      {
+        "flag_status": 6,
+        "individual_flags": [
+          2,
+          4
+        ],
+        "flag_description": "Flags 2+4",
+        "row_count": 1243,
+        "binary_representation": "110"
+      },
+      {
+        "flag_status": 2,
+        "individual_flags": [
+          2
+        ],
+        "flag_description": "Flags 2",
+        "row_count": 1310,
+        "binary_representation": "10"
+      },
+      {
+        "flag_status": 7,
+        "individual_flags": [
+          1,
+          2,
+          4
+        ],
+        "flag_description": "Flags 1+2+4",
+        "row_count": 389,
+        "binary_representation": "111"
+      },
+      {
+        "flag_status": 1,
+        "individual_flags": [
+          1
+        ],
+        "flag_description": "Flags 1",
+        "row_count": 834,
+        "binary_representation": "1"
+      },
+      {
+        "flag_status": 8,
+        "individual_flags": [
+          8
+        ],
+        "flag_description": "Flags 8",
+        "row_count": 1,
+        "binary_representation": "1000"
+      }
+    ]
+  }
+}
