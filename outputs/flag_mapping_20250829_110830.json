@@ -1,0 +1,68 @@
+{
+  "metadata": {
+    "created_at": "2025-08-29T11:08:30.715272",
+    "total_flags": 5,
+    "max_flag_value": 16,
+    "description": "Binary flag mapping for Phase 2 data quality issues"
+  },
+  "flag_mapping": {
+    "1": "Rows with both Window_Seat and Aisle_Seat marked as true, which is logically contradictory.",
+    "2": "Departure date and time are later than arrival date and time in some records.",
+    "4": "Mismatch between 'Number_of_Layovers' count and the number of 'Layover_Locations' listed.",
+    "8": "Inconsistent naming and formatting in passenger names and seat numbers.",
+    "16": "Some columns have cryptic names or codes that are not self-explanatory."
+  },
+  "issue_details": {
+    "1": {
+      "description": "Rows with both Window_Seat and Aisle_Seat marked as true, which is logically contradictory.",
+      "category": "Data Consistency",
+      "severity": "High",
+      "affected_columns": [
+        "Window_Seat",
+        "Aisle_Seat"
+      ],
+      "fix_approach": "Review seating data to ensure accuracy and correct any errors."
+    },
+    "2": {
+      "description": "Departure date and time are later than arrival date and time in some records.",
+      "category": "Business Logic Violations",
+      "severity": "High",
+      "affected_columns": [
+        "Departure_DateTime",
+        "Arrival_DateTime"
+      ],
+      "fix_approach": "Correct the dates to ensure departure occurs before arrival."
+    },
+    "4": {
+      "description": "Mismatch between 'Number_of_Layovers' count and the number of 'Layover_Locations' listed.",
+      "category": "Cross-Field Relationship Validation",
+      "severity": "High",
+      "affected_columns": [
+        "Number_of_Layovers",
+        "Layover_Locations"
+      ],
+      "fix_approach": "Ensure the number of Number_of_Layovers matches the number of layover locations listed."
+    },
+    "8": {
+      "description": "Inconsistent naming and formatting in passenger names and seat numbers.",
+      "category": "Data Quality Issues",
+      "severity": "Medium",
+      "affected_columns": [
+        "Passenger_Name",
+        "Seat_Number"
+      ],
+      "fix_approach": "Standardize the format for names and seat numbers to improve readability and consistency."
+    },
+    "16": {
+      "description": "Some columns have cryptic names or codes that are not self-explanatory.",
+      "category": "Data Quality Issues",
+      "severity": "Medium",
+      "affected_columns": [
+        "Airline_ID",
+        "Flight_Number",
+        "Booking_Code"
+      ],
+      "fix_approach": "Rename columns to more descriptive names to enhance understandability."
+    }
+  }
+}

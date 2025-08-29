@@ -1,0 +1,28 @@
+{
+  "total_codes": 3,
+  "detection_codes": [
+    {
+      "flag_value": 1,
+      "detection_code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "explanation": "This code detects rows where both Window Seat and Aisle Seat are marked as True, indicating contradictory values in these columns.",
+      "test_description": "Test by checking rows where both Window Seat and Aisle Seat are marked as True. The flag_status should be set to 1 for these rows.",
+      "safety_notes": "Ensure that the normalization of boolean values is consistent and covers all possible true representations to avoid missing any contradictory values."
+    },
+    {
+      "flag_value": 2,
+      "detection_code": "df.loc[(pd.to_datetime(df['Departure Date/Time'], errors='coerce') > pd.to_datetime(df['Arrival Date/Time'], errors='coerce')) & df['Departure Date/Time'].notna() & df['Arrival Date/Time'].notna(), 'flag_status'] |= 2",
+      "explanation": "This code detects rows where the departure date/time is after the arrival date/time, which is a business logic violation. It uses pandas to convert the date/time columns and compares them to identify the issue.",
+      "test_description": "Test by inserting a row where the departure date/time is after the arrival date/time and running the detection code. The flag_status should be set to 2 for that row.",
+      "safety_notes": "Ensure that the date/time columns are properly formatted before running this detection code to avoid any conversion errors."
+    },
+    {
+      "flag_value": 4,
+      "detection_code": "df.loc[(pd.to_numeric(df['Layovers'], errors='coerce').fillna(0).astype(int) != df['Layover Locations'].fillna('').astype(str).apply(lambda x: len([i for i in re.split(r'[;,|>]|->', str(x)) if i.strip()]))), 'flag_status'] |= 4",
+      "explanation": "Checks for mismatch between Layovers and Layover Locations",
+      "test_description": "Create rows where Layovers does not equal number of items in Layover Locations",
+      "safety_notes": "Handles missing values, multiple delimiters (;,|,>,->)."
+    }
+  ],
+  "generation_timestamp": "2025-08-29T12:54:35.094225",
+  "llm_model": "gpt-3.5-turbo"
+}

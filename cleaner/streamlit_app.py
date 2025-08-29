@@ -1605,7 +1605,7 @@ def render_cleaner_tab():
     """)
 
 def main():
-    st.title("🔍 LLM Powered Analysis")
+    st.title("🔍 LLM Powered Anlysis")
     st.markdown("**Transform your data through AI-powered quality detection and cleaning**")
     initialize_session_state()
 

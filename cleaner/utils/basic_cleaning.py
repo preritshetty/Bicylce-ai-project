@@ -52,7 +52,44 @@ class BasicCleaner:
             })
         
         return df
-    
+    def remove_uniform_prefixes(self, df: pd.DataFrame, threshold: float = 0.95) -> pd.DataFrame:
+        """
+        Detect and remove uniform prefixes like 'Name_', 'Pilot_', 'Crew_' 
+        that appear in >= threshold fraction of rows for a given column.
+        """
+        if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+            return df
+
+        df = df.copy()
+        changed_cols = []
+
+        for col in df.select_dtypes(include=["object", "string"]).columns:
+            s = df[col].astype(str).str.strip()
+
+            # Extract leading token (letters only) followed by underscore
+            tokens = s.str.extract(r'^([A-Za-z]+)_', expand=False)
+            has_prefix = tokens.notna()
+
+            if has_prefix.mean() >= threshold:  # enough rows share the prefix
+                top = tokens.mode(dropna=True)
+                if not top.empty:
+                    token = top.iloc[0]
+                    # Remove this prefix from the start of the string
+                    df[col] = s.str.replace(rf'^{token}_', '', regex=True)
+                    changed_cols.append((col, f"{token}_", round(100 * has_prefix.mean(), 2)))
+
+        if changed_cols:
+            self.cleaning_log.append({
+                "operation": "remove_uniform_prefixes",
+                "details": [
+                    {"column": c, "removed_prefix": p, "%rows": pct} 
+                    for c, p, pct in changed_cols
+                ],
+                "success": True
+            })
+
+        return df   
+
     def standardize_case(self, df: pd.DataFrame, case_type: str = 'title') -> pd.DataFrame:
         """Standardize text case for text columns"""
         df = df.copy()
@@ -85,27 +122,42 @@ class BasicCleaner:
         
         return df
     
-    def perform_basic_cleaning(self, df: pd.DataFrame, 
-                             remove_duplicates: bool = True,
-                             clean_text: bool = True,
-                             case_type: str = 'title') -> pd.DataFrame:
-        """Perform all basic cleaning operations"""
+    def perform_basic_cleaning(
+        self,
+        df: pd.DataFrame,
+        remove_duplicates: bool = True,
+        clean_text: bool = True,
+        case_type: str = "title"
+    ) -> pd.DataFrame:
+        """Perform all basic cleaning operations safely"""
+        # Guard against None or invalid type
+        if df is None or not isinstance(df, pd.DataFrame):
+            return df
+
+        # Guard against empty dataframe
+        if df.empty:
+            return df
+
         df = df.copy()
         self.cleaning_log = []  # Reset log
-        
+
         # Step 1: Remove duplicates
         if remove_duplicates:
             df = self.remove_duplicates(df)
-        
+
         # Step 2: Clean text
         if clean_text:
             df = self.clean_text_columns(df)
-        
+
+        # Step 2.5: Remove uniform prefixes like Name_/Pilot_/Crew_
+        df = self.remove_uniform_prefixes(df)
+
         # Step 3: Standardize case
-        if case_type != 'none':
+        if case_type and case_type.lower() != "none":
             df = self.standardize_case(df, case_type)
-        
+
         return df
+
     
     def get_cleaning_report(self) -> pd.DataFrame:
         """Get a report of cleaning operations"""

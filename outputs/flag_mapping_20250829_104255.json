@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "created_at": "2025-08-29T10:42:55.031092",
+    "total_flags": 3,
+    "max_flag_value": 4,
+    "description": "Binary flag mapping for Phase 2 data quality issues"
+  },
+  "flag_mapping": {
+    "1": "Contradictory values found in Window Seat and Aisle Seat columns.",
+    "2": "Departure date/time is after arrival date/time.",
+    "4": "Mismatch between Layovers count and layover locations list."
+  },
+  "issue_details": {
+    "1": {
+      "description": "Contradictory values found in Window Seat and Aisle Seat columns.",
+      "category": "Data Consistency",
+      "severity": "High",
+      "affected_columns": [
+        "Window Seat",
+        "Aisle Seat"
+      ],
+      "fix_approach": "Ensure only one of Window Seat or Aisle Seat is True per row."
+    },
+    "2": {
+      "description": "Departure date/time is after arrival date/time.",
+      "category": "Business Logic Violation",
+      "severity": "Medium",
+      "affected_columns": [
+        "Departure Date/Time",
+        "Arrival Date/Time"
+      ],
+      "fix_approach": "Correct the departure and arrival date/time values."
+    },
+    "4": {
+      "description": "Mismatch between Layovers count and layover locations list.",
+      "category": "Cross-Field Relationship Validation",
+      "severity": "High",
+      "affected_columns": [
+        "Layovers",
+        "Layover Locations"
+      ],
+      "fix_approach": "Ensure the number of Layovers matches the number of layover locations."
+    }
+  }
+}
