@@ -1,13 +1,14 @@
 {
   "metadata": {
-    "created_at": "2025-08-29T15:23:07.820414",
-    "total_flags": 2,
-    "max_flag_value": 2,
+    "created_at": "2025-08-29T16:23:31.316621",
+    "total_flags": 3,
+    "max_flag_value": 4,
     "description": "Binary flag mapping for Phase 2 data quality issues"
   },
   "flag_mapping": {
     "1": "Contradictory values found in 'Size' column (e.g., '4 Bedroom' and '4 Bhk' represent the same information).",
-    "2": "Numeric outlier detected in 'Price' column (e.g., max Price of 2600.0 seems like an entry error)."
+    "2": "Numeric outliers detected in 'Price' column (e.g., min=17.835, max=2600.0).",
+    "4": "Mismatch between 'Size' count and 'Size' text values."
   },
   "issue_details": {
     "1": {
@@ -20,13 +21,22 @@
       "fix_approach": "Standardize the 'Size' column values to a consistent format (e.g., convert all to 'Bedroom' or 'Bhk')."
     },
     "2": {
-      "description": "Numeric outlier detected in 'Price' column (e.g., max Price of 2600.0 seems like an entry error).",
+      "description": "Numeric outliers detected in 'Price' column (e.g., min=17.835, max=2600.0).",
       "category": "Business Logic Violations",
       "severity": "Medium",
       "affected_columns": [
         "Price"
       ],
-      "fix_approach": "Investigate and correct any data entry errors in the 'Price' column."
+      "fix_approach": "Review and validate extreme 'Price' values for potential data entry errors."
+    },
+    "4": {
+      "description": "Mismatch between 'Size' count and 'Size' text values.",
+      "category": "Cross-Field Relationship Validation",
+      "severity": "High",
+      "affected_columns": [
+        "Size"
+      ],
+      "fix_approach": "Ensure consistency between the numeric count in 'Size' and the text representation."
     }
   }
 }

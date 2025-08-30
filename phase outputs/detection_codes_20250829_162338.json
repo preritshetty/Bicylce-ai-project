@@ -1,0 +1,28 @@
+{
+  "total_codes": 3,
+  "detection_codes": [
+    {
+      "flag_value": 1,
+      "detection_code": "df.loc[(df['Size'].str.lower().str.replace('bedroom', 'bhk') != df['Size'].str.lower().str.replace('bhk', 'bedroom')), 'flag_status'] |= 1",
+      "explanation": "This code detects contradictory values in the 'Size' column by checking if there are inconsistent representations of 'Bedroom' and 'Bhk'. It standardizes the values by converting all 'Bedroom' to 'Bhk' or vice versa.",
+      "test_description": "To test this detection, create sample data with contradictory values in the 'Size' column such as '4 Bedroom' and '4 Bhk'. Apply the detection code and verify that the 'flag_status' is updated for rows with inconsistent 'Size' values.",
+      "safety_notes": "Ensure that the replacement logic accurately captures and standardizes the values. Test the detection code with various contradictory 'Size' values to validate its effectiveness."
+    },
+    {
+      "flag_value": 2,
+      "detection_code": "df.loc[(pd.to_numeric(df['Price'], errors='coerce').notnull()) & ((df['Price'] < 17.835) | (df['Price'] > 2600.0)), 'flag_status'] |= 2",
+      "explanation": "Detects numeric outliers in the 'Price' column by flagging values that are below 17.835 or above 2600.0.",
+      "test_description": "Test by checking if the 'Price' column contains any values below 17.835 or above 2600.0.",
+      "safety_notes": "Ensure that extreme 'Price' values are reviewed for potential data entry errors."
+    },
+    {
+      "flag_value": 4,
+      "detection_code": "# Fallback detection for flag 4\ndf.loc[df.index == -1, 'flag_status'] |= 4  # Placeholder",
+      "explanation": "Fallback for Mismatch between 'Size' count and 'Size' text values.",
+      "test_description": "This selects no rows. Replace with proper logic.",
+      "safety_notes": "Safe but non-functional."
+    }
+  ],
+  "generation_timestamp": "2025-08-29T16:23:38.149993",
+  "llm_model": "gpt-3.5-turbo"
+}

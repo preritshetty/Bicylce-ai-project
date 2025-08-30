@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "created_at": "2025-08-29T17:26:19.475523",
+    "total_flags": 4,
+    "max_flag_value": 8,
+    "description": "Binary flag mapping for Phase 2 data quality issues"
+  },
+  "flag_mapping": {
+    "1": "Contradictory values found in Window Seat and Aisle Seat columns.",
+    "2": "Departure date/time is after arrival date/time.",
+    "4": "Missing critical information in Loyalty Points column.",
+    "8": "Mismatch between Layovers count and layover locations."
+  },
+  "issue_details": {
+    "1": {
+      "description": "Contradictory values found in Window Seat and Aisle Seat columns.",
+      "category": "Data Consistency",
+      "severity": "High",
+      "affected_columns": [
+        "Window Seat",
+        "Aisle Seat"
+      ],
+      "fix_approach": "Ensure only one of Window Seat or Aisle Seat is true per row."
+    },
+    "2": {
+      "description": "Departure date/time is after arrival date/time.",
+      "category": "Business Logic Violations",
+      "severity": "High",
+      "affected_columns": [
+        "Departure Date/Time",
+        "Arrival Date/Time"
+      ],
+      "fix_approach": "Correct the departure and arrival date/time values."
+    },
+    "4": {
+      "description": "Missing critical information in Loyalty Points column.",
+      "category": "Data Quality Issues",
+      "severity": "Medium",
+      "affected_columns": [
+        "Loyalty Points"
+      ],
+      "fix_approach": "InvestiGate and fill in missing loyalty points data."
+    },
+    "8": {
+      "description": "Mismatch between Layovers count and layover locations.",
+      "category": "Cross-Field Relationship Validation",
+      "severity": "High",
+      "affected_columns": [
+        "Layovers",
+        "Layover Locations"
+      ],
+      "fix_approach": "Ensure the number of Layovers matches the number of layover locations."
+    }
+  }
+}

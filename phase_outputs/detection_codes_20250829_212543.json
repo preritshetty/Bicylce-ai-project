@@ -1,0 +1,35 @@
+{
+  "total_codes": 4,
+  "detection_codes": [
+    {
+      "flag_value": 1,
+      "detection_code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "explanation": "This code detects rows where both Window Seat and Aisle Seat are marked as true, indicating a contradictory situation where a seat is both a window seat and an aisle seat at the same time.",
+      "test_description": "Test by checking rows where both Window Seat and Aisle Seat are marked as true. After running the detection code, the 'flag_status' column should be updated to flag those rows.",
+      "safety_notes": "Ensure that the normalization of boolean values is consistent and covers all possible true representations to avoid missing any contradictory values."
+    },
+    {
+      "flag_value": 2,
+      "detection_code": "df.loc[(df['Status'].notna()) & ((pd.to_datetime(df['Departure Datetime'], errors='coerce') > pd.to_datetime(df['Arrival Datetime'], errors='coerce')) | (pd.to_datetime(df['Departure Time'], errors='coerce') > pd.to_datetime(df['Arrival Time'], errors='coerce'))), 'flag_status'] |= 2",
+      "explanation": "This code detects the data quality issue where there is a conflict between the status and operational timestamps. It checks if the Status is not null and if the Departure Datetime is after the Arrival Datetime or the Departure Time is after the Arrival Time.",
+      "test_description": "To test this detection, you can create sample data where the Status is not null and the Departure Datetime is after the Arrival Datetime or the Departure Time is after the Arrival Time. After running the detection code, the 'flag_status' column should be flagged with the value 2 for the conflicting rows.",
+      "safety_notes": "Ensure that the columns 'Status', 'Departure Datetime', 'Arrival Datetime', 'Departure Time', and 'Arrival Time' are correctly formatted as datetime objects for accurate detection."
+    },
+    {
+      "flag_value": 4,
+      "detection_code": "df.loc[(pd.to_datetime(df['Departure Datetime'], errors='coerce') > pd.to_datetime(df['Arrival Datetime'], errors='coerce')) & df['Departure Datetime'].notna() & df['Arrival Datetime'].notna(), 'flag_status'] |= 4",
+      "explanation": "This code detects rows where the departure datetime is after the arrival datetime, which is a violation of business logic.",
+      "test_description": "Test by checking if the 'flag_status' column is updated to 4 for rows where Departure Datetime is after Arrival Datetime.",
+      "safety_notes": "Ensure that the datetime columns are properly formatted and contain valid datetime values for accurate detection."
+    },
+    {
+      "flag_value": 8,
+      "detection_code": "df.loc[(pd.to_numeric(df['Layovers'], errors='coerce').fillna(0).astype(int) != df['Layover Locations'].fillna('').astype(str).apply(lambda x: len([i for i in re.split(r'[;,|>]|->', str(x)) if i.strip()]))), 'flag_status'] |= 8",
+      "explanation": "Checks for mismatch between Layovers and Layover Locations",
+      "test_description": "Create rows where Layovers does not equal number of items in Layover Locations",
+      "safety_notes": "Handles missing values, multiple delimiters (;,|,>,->)."
+    }
+  ],
+  "generation_timestamp": "2025-08-29T21:25:43.199295",
+  "llm_model": "gpt-3.5-turbo"
+}

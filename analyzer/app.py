@@ -5,8 +5,10 @@ import numpy as np
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 import plotly.express as px   # ✅ added
-from modules.llm_agent import create_agent
-from modules.query_handler import run_query, pick_axes, pick_chart_type
+from analyzer.modules.llm_agent import create_agent
+from analyzer.modules.query_handler import run_query, pick_axes, pick_chart_type
+
+
 
 # -------------------------------
 # Environment setup
@@ -72,7 +74,7 @@ def render_analysis(df: pd.DataFrame | None):
         llm = ChatOpenAI(
             api_key=os.environ.get("OPENAI_API_KEY"),
             temperature=0,
-            model=os.environ.get("MODEL_NAME", "gpt-4o-mini")
+            model=os.environ.get("MODEL_NAME", "gpt-4o")
         )
         st.session_state.agent = create_agent(llm, df)
 
