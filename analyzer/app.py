@@ -4,10 +4,11 @@ import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-import plotly.express as px   # ✅ added
+import plotly.express as px
+
+
 from analyzer.modules.llm_agent import create_agent
 from analyzer.modules.query_handler import run_query, pick_axes, pick_chart_type
-
 
 
 # -------------------------------
@@ -17,6 +18,7 @@ load_dotenv()
 if not os.environ.get("OPENAI_API_KEY"):
     st.error("❌ OPENAI_API_KEY not found. Please set it in your .env file.")
     st.stop()
+
 
 # -------------------------------
 # Streamlit Page Config
@@ -32,18 +34,15 @@ st.set_page_config(
 # ✅ New reusable function
 # ==============================================================
 def render_analysis(df: pd.DataFrame | None):
-    """
-    Reuse the full analysis UI. If df is None, fall back to the original
-    upload/default-loading logic from this file (so app.py still runs standalone).
-    """
-    # Always load the cleaner’s output
     DATA_PATH = "data/final_cleaned.csv"
     st.sidebar.header("📂 Data Source (Cleaner Output)")
     st.sidebar.info("This analyser always reads the cleaner’s final output.")
 
+
     if not os.path.exists(DATA_PATH):
         st.error(f"❌ Expected cleaned file not found: {DATA_PATH}")
         st.stop()
+
 
     try:
         df = pd.read_csv(DATA_PATH)
@@ -52,20 +51,25 @@ def render_analysis(df: pd.DataFrame | None):
         st.error(f"❌ Failed to read {DATA_PATH}: {e}")
         st.stop()
 
-    # ensure downstream code sees the same frame
+
     st.session_state["df"] = df
+
 
     # -------------------------------
     # Session State Init
     # -------------------------------
-    st.session_state.setdefault("query_cache", {})     
-    st.session_state.setdefault("query_history", [])   
+    st.session_state.setdefault("query_cache", {})
+    st.session_state.setdefault("query_history", [])
     st.session_state.setdefault("current_cache_key", None)
     st.session_state.setdefault("answer_text", None)
     st.session_state.setdefault("proof_df", None)
     st.session_state.setdefault("current_query", "")
     st.session_state.setdefault("is_cached_result", False)
     st.session_state.setdefault("agent", None)
+    # 🧠 Conversational memory
+    st.session_state.setdefault("conv_context", [])
+    st.session_state.setdefault("conv_max_turns", 3)
+
 
     # -------------------------------
     # Agent Creation
@@ -78,19 +82,23 @@ def render_analysis(df: pd.DataFrame | None):
         )
         st.session_state.agent = create_agent(llm, df)
 
+
     # -------------------------------
     # Embeddings setup for semantic cache
     # -------------------------------
     if 'embeddings' not in st.session_state:
         st.session_state.embeddings = OpenAIEmbeddings(openai_api_key=os.environ.get("OPENAI_API_KEY"))
 
+
     def get_embedding(text: str) -> list:
         return st.session_state.embeddings.embed_query(text)
+
 
     def cosine_similarity(v1: list, v2: list) -> float:
         v1 = np.array(v1)
         v2 = np.array(v2)
         return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+
 
     def find_similar_cached_query(query: str, min_similarity: float = 0.92) -> str | None:
         if not query or not st.session_state.query_cache:
@@ -107,8 +115,38 @@ def render_analysis(df: pd.DataFrame | None):
                 max_similarity, most_similar_key = similarity, cache_key
         return most_similar_key if max_similarity >= min_similarity else None
 
+
     def make_cache_key(query: str) -> str:
         return f"q::{query.lower().strip()}"
+
+
+    # -------------------------------
+    # Sidebar: Conversation Context
+    # -------------------------------
+    with st.sidebar.expander("🧠 Conversation Context", expanded=False):
+        st.caption("Follow-up questions will use the most recent Q&A here.")
+        max_turns = st.number_input(
+            "Keep last N turns", min_value=1, max_value=10, value=st.session_state.conv_max_turns, step=1
+        )
+        if max_turns != st.session_state.conv_max_turns:
+            st.session_state.conv_max_turns = int(max_turns)
+            # clip if necessary
+            st.session_state.conv_context = st.session_state.conv_context[: st.session_state.conv_max_turns]
+
+
+        if st.session_state.conv_context:
+            for i, turn in enumerate(st.session_state.conv_context, start=1):
+                st.markdown(f"**Q{i}:** {turn['q']}")
+                st.markdown(f"**A{i}:** {turn['a'][:200] + ('…' if len(turn['a'])>200 else '')}")
+                st.divider()
+        else:
+            st.info("No prior context yet.")
+
+
+        if st.button("♻️ Clear Context"):
+            st.session_state.conv_context = []
+            st.success("Conversation context cleared.")
+
 
     # -------------------------------
     # Sidebar: Query History + Cache Control
@@ -137,6 +175,7 @@ def render_analysis(df: pd.DataFrame | None):
                 st.session_state.current_query = q
                 st.rerun()
 
+
     cache_size = len(st.session_state.query_cache)
     if cache_size > 0:
         st.sidebar.header("🗑️ Cache Control")
@@ -147,11 +186,13 @@ def render_analysis(df: pd.DataFrame | None):
             st.sidebar.success("Cache cleared!")
             st.rerun()
 
+
     # -------------------------------
     # Main Query Input
     # -------------------------------
-    query = st.text_input("🔍 Ask a Question", 
-                        placeholder="e.g., Which category has the most records?")
+    query = st.text_input("🔍 Ask a Question",
+                          placeholder="e.g., Which airline has the most flights? Then ask: And what about cancellations for that airline?")
+
 
     if st.button("Run Analysis"):
         q = query.strip()
@@ -161,6 +202,7 @@ def render_analysis(df: pd.DataFrame | None):
             similar_cache_key = find_similar_cached_query(q)
             cache_key = similar_cache_key if similar_cache_key else make_cache_key(q)
             st.session_state.current_cache_key = cache_key
+
 
             if similar_cache_key:
                 entry = st.session_state.query_cache[cache_key]
@@ -183,7 +225,9 @@ def render_analysis(df: pd.DataFrame | None):
                 st.session_state.current_query = q
             st.rerun()
 
+
     st.divider()
+
 
     # -------------------------------
     # Results Display
@@ -194,13 +238,16 @@ def render_analysis(df: pd.DataFrame | None):
             st.info("🔄 This answer was retrieved from cache", icon="ℹ️")
         st.success(st.session_state.answer_text)
 
+
     if st.session_state.proof_df is not None and not st.session_state.proof_df.empty:
         st.subheader("📑 Proof DataFrame")
         st.dataframe(st.session_state.proof_df.head(15), use_container_width=True)
 
+
         df_proof = st.session_state.proof_df
         x, y = pick_axes(df_proof)
         default_chart = pick_chart_type(x, st.session_state.current_query)
+
 
         st.subheader("📊 Visualization")
         chart_type = st.selectbox(
@@ -209,6 +256,7 @@ def render_analysis(df: pd.DataFrame | None):
             index=["Bar", "Line", "Scatter", "Pie", "Box"].index(default_chart),
             key="chart_type_select"
         )
+
 
         try:
             if chart_type == "Bar":
@@ -228,13 +276,14 @@ def render_analysis(df: pd.DataFrame | None):
         st.info("ℹ️ No proof DataFrame or visualization available for this query.")
 
 
+
 # ==============================================================
 # ✅ Keep standalone app functionality
 # ==============================================================
 def main():
     st.title("📊 LLM-Powered Data Analysis")
     st.markdown("Upload a CSV or use the default dataset. Ask natural language questions...")
-    render_analysis(df=None)   # when run directly, fall back to upload/default
+    render_analysis(df=None)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import pandas as pd
 import io
+import re
 import streamlit as st
 
 # -------------------------------
@@ -62,6 +63,49 @@ def pick_chart_type(x: str, query: str) -> str:
         return "Pie"
     return "Bar"
 
+
+# -------------------------------
+# Conversational context helpers
+# -------------------------------
+
+def _init_context(max_turns: int = 3):
+    """Ensure session state keys exist."""
+    st.session_state.setdefault("conv_context", [])  # list of dicts: {"q": str, "a": str}
+    st.session_state.setdefault("conv_max_turns", max_turns)
+
+
+def _push_context(q: str, a: str):
+    """Append a Q/A turn and clip to max turns."""
+    _init_context()
+    st.session_state.conv_context.insert(0, {"q": q.strip(), "a": a.strip()})
+    # keep only last N
+    st.session_state.conv_context = st.session_state.conv_context[: st.session_state.conv_max_turns]
+
+
+def _build_context_block() -> str:
+    """
+    Convert recent Q&A into a concise instruction block for the LLM.
+    We keep it short and structured to reduce prompt bloat.
+    """
+    _init_context()
+    if not st.session_state.conv_context:
+        return ""
+
+    lines = ["Previous Q&A (most recent first):"]
+    for i, turn in enumerate(st.session_state.conv_context, start=1):
+        q = re.sub(r"\s+", " ", turn["q"]).strip()
+        a = re.sub(r"\s+", " ", turn["a"]).strip()
+        # Keep answers brief in memory to avoid huge prompts
+        a_short = a if len(a) <= 300 else (a[:297] + "…")
+        lines.append(f"- Q{i}: {q}")
+        lines.append(f"  A{i}: {a_short}")
+    lines.append(
+        "When the new question uses pronouns like 'this/that/these/it' or says 'same airline',"
+        " interpret them using the most recent relevant Q&A above."
+    )
+    return "\n".join(lines)
+
+
 # -------------------------------
 # Core Query
 # -------------------------------
@@ -88,15 +132,6 @@ def run_query(agent, query: str, df: pd.DataFrame) -> tuple[str, pd.DataFrame | 
     """
     Run query with the LLM agent and return results.
 
-    Parameters
-    ----------
-    agent : AgentExecutor
-        The LangChain agent to use for queries
-    query : str
-        User's natural language question
-    df : pd.DataFrame
-        The dataset to analyze
-
     Returns
     -------
     response : str
@@ -105,12 +140,14 @@ def run_query(agent, query: str, df: pd.DataFrame) -> tuple[str, pd.DataFrame | 
         Parsed and cleaned DataFrame with proof data
     """
     try:
+        # 🔗 Inject recent conversational context
+        context_block = _build_context_block()
         formatted_query = (
-            f"{query}\n\n"
-            "IMPORTANT: Respond in two parts:\n"
-            "1. A short explanation\n"
+            (context_block + "\n\n") if context_block else ""
+        ) + f"New user question: {query}\n\n" \
+            "IMPORTANT: Respond in two parts:\n" \
+            "1. A short explanation\n" \
             "2. A markdown table with the supporting data"
-        )
 
         # ✅ Ensure df + pd are always injected into the tool sandbox
         if hasattr(agent, "tools") and agent.tools:
@@ -121,7 +158,7 @@ def run_query(agent, query: str, df: pd.DataFrame) -> tuple[str, pd.DataFrame | 
 
         # Run the agent
         result = agent.invoke({"input": formatted_query})
-        response = result.get("output", "")
+        response = result.get("output", "").strip()
         result_df = None
 
         # Step 1: check intermediate DataFrame outputs
@@ -142,6 +179,9 @@ def run_query(agent, query: str, df: pd.DataFrame) -> tuple[str, pd.DataFrame | 
         # Step 4: fallback if nothing worked
         if result_df is None:
             result_df = pd.DataFrame({"Answer": [response]})
+
+        # 🧠 Update conversational memory (only if we actually produced an answer string)
+        _push_context(query, response)
 
         return str(response), result_df
 

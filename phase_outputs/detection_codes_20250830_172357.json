@@ -1,0 +1,28 @@
+{
+  "total_codes": 3,
+  "detection_codes": [
+    {
+      "flag_value": 1,
+      "detection_code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "explanation": "This code detects rows where both Window Seat and Aisle Seat are marked as true, indicating a contradictory situation where a seat is marked as both window and aisle seat simultaneously.",
+      "test_description": "Test by checking rows where both Window Seat and Aisle Seat are marked as true. After running the code, these rows should have the 'flag_status' column updated to 1.",
+      "safety_notes": "Ensure that the normalization of boolean values is consistent and covers all possible true representations to avoid missing any contradictory values."
+    },
+    {
+      "flag_value": 2,
+      "detection_code": "df.loc[(pd.to_datetime(df['Departure Date/Time'], errors='coerce') > pd.to_datetime(df['Arrival Date/Time'], errors='coerce')) & df['Departure Date/Time'].notna() & df['Arrival Date/Time'].notna(), 'flag_status'] |= 2",
+      "explanation": "This code detects rows where the departure date/time is after the arrival date/time, which violates the business logic. It converts the 'Departure Date/Time' and 'Arrival Date/Time' columns to datetime objects and checks for the violation.",
+      "test_description": "Test by inserting a row where the 'Departure Date/Time' is set after the 'Arrival Date/Time'. After running the detection code, check if the 'flag_status' column is updated to 2 for that row.",
+      "safety_notes": "Ensure that the date/time formats in the 'Departure Date/Time' and 'Arrival Date/Time' columns are consistent and correctly represent date/time values to avoid false positives."
+    },
+    {
+      "flag_value": 4,
+      "detection_code": "df.loc[(pd.to_numeric(df['Layovers'], errors='coerce').fillna(0).astype(int) != df['Layover Locations'].fillna('').astype(str).apply(lambda x: len([i for i in re.split(r'[;,|>]|->', str(x)) if i.strip()]))), 'flag_status'] |= 4",
+      "explanation": "Checks for mismatch between Layovers and Layover Locations",
+      "test_description": "Create rows where Layovers does not equal number of items in Layover Locations",
+      "safety_notes": "Handles missing values, multiple delimiters (;,|,>,->)."
+    }
+  ],
+  "generation_timestamp": "2025-08-30T17:23:57.339818",
+  "llm_model": "gpt-3.5-turbo"
+}
