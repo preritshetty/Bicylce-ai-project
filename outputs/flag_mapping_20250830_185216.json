@@ -1,15 +1,14 @@
 {
   "metadata": {
-    "created_at": "2025-08-30T19:25:49.825803",
-    "total_flags": 4,
-    "max_flag_value": 8,
+    "created_at": "2025-08-30T18:52:16.971912",
+    "total_flags": 3,
+    "max_flag_value": 4,
     "description": "Binary flag mapping for Phase 2 data quality issues"
   },
   "flag_mapping": {
     "1": "Contradictory values found in Window Seat and Aisle Seat columns.",
     "2": "Departure date/time is after arrival date/time.",
-    "4": "Missing critical information in some rows.",
-    "8": "Mismatch between Layovers count and layover locations list."
+    "4": "Mismatch between Layovers count and layover locations list."
   },
   "issue_details": {
     "1": {
@@ -25,7 +24,7 @@
     "2": {
       "description": "Departure date/time is after arrival date/time.",
       "category": "Business Logic Violations",
-      "severity": "High",
+      "severity": "Medium",
       "affected_columns": [
         "Departure Date/Time",
         "Arrival Date/Time"
@@ -33,17 +32,6 @@
       "fix_approach": "Correct the departure and arrival date/time values."
     },
     "4": {
-      "description": "Missing critical information in some rows.",
-      "category": "Data Quality Issues",
-      "severity": "Medium",
-      "affected_columns": [
-        "Departure Date/Time",
-        "Arrival Date/Time",
-        "Status"
-      ],
-      "fix_approach": "Ensure all critical information is provided for each flight."
-    },
-    "8": {
       "description": "Mismatch between Layovers count and layover locations list.",
       "category": "Cross-Field Relationship Validation",
       "severity": "High",

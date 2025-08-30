@@ -1,0 +1,35 @@
+{
+  "total_codes": 4,
+  "detection_codes": [
+    {
+      "flag_value": 1,
+      "detection_code": "df.loc[(df['Window Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1']) & df['Aisle Seat'].astype(str).str.strip().str.lower().isin(['true','t','yes','y','1'])), 'flag_status'] |= 1",
+      "explanation": "This code detects rows where both Window Seat and Aisle Seat are marked as true, indicating contradictory values. It flags these rows as having inconsistent seat assignments.",
+      "test_description": "To test this detection, check rows where both Window Seat and Aisle Seat are marked as true. After running the code, the 'flag_status' column should be updated to 1 for those rows.",
+      "safety_notes": "Ensure that the normalization of boolean values is consistent and covers all possible true representations to avoid missing any contradictory values."
+    },
+    {
+      "flag_value": 2,
+      "detection_code": "df.loc[(pd.to_datetime(df['Departure Date/Time'], errors='coerce') > pd.to_datetime(df['Arrival Date/Time'], errors='coerce')) & df['Departure Date/Time'].notna() & df['Arrival Date/Time'].notna(), 'flag_status'] |= 2",
+      "explanation": "This code detects rows where the departure date/time is after the arrival date/time, indicating a business logic violation.",
+      "test_description": "Test by inserting a row where Departure Date/Time is after Arrival Date/Time and running the detection code.",
+      "safety_notes": "Ensure that the date/time columns are properly formatted and contain valid date/time values for accurate detection."
+    },
+    {
+      "flag_value": 4,
+      "detection_code": "df.loc[(df['Departure Date/Time'].isna() | df['Departure Date/Time'].astype(str).str.strip() == '' | df['Arrival Date/Time'].isna() | df['Arrival Date/Time'].astype(str).str.strip() == '' | df['Status'].isna() | df['Status'].astype(str).str.strip() == ''), 'flag_status'] |= 4",
+      "explanation": "This code flags rows where critical information (Departure Date/Time, Arrival Date/Time, Status) is missing or empty.",
+      "test_description": "Check if the code correctly flags rows where Departure Date/Time, Arrival Date/Time, or Status is missing or empty.",
+      "safety_notes": "Ensure that the columns 'Departure Date/Time', 'Arrival Date/Time', and 'Status' are correctly named in the DataFrame and that missing or empty values indicate actual data quality issues."
+    },
+    {
+      "flag_value": 8,
+      "detection_code": "df.loc[(pd.to_numeric(df['Layovers'], errors='coerce').fillna(0).astype(int) != df['Layover Locations'].fillna('').astype(str).apply(lambda x: len([i for i in re.split(r'[;,|>]|->', str(x)) if i.strip()]))), 'flag_status'] |= 8",
+      "explanation": "Checks for mismatch between Layovers and Layover Locations",
+      "test_description": "Create rows where Layovers does not equal number of items in Layover Locations",
+      "safety_notes": "Handles missing values, multiple delimiters (;,|,>,->)."
+    }
+  ],
+  "generation_timestamp": "2025-08-30T19:25:58.143518",
+  "llm_model": "gpt-3.5-turbo"
+}

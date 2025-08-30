@@ -87,11 +87,18 @@ def configure_joins():
                 key=f"secondary_key_{i}",
             )
 
+        # ✅ Default to all available columns (except secondary key)
+        available_cols = [
+            c for c in st.session_state.uploaded_files[table_name].columns
+            if c != secondary_key
+        ]
         selected_columns = st.multiselect(
             f"Columns from {table_name}:",
-            [c for c in st.session_state.uploaded_files[table_name].columns if c != secondary_key],
+            options=available_cols,
+            default=available_cols,  # 👈 auto-select all
             key=f"columns_{i}",
         )
+
         join_configs.append({
             'secondary_table': table_name,
             'join_type': join_type,
